@@ -1,0 +1,35 @@
+name: bakerstack
+description: "BakerStack - E-commerce Flutter Application"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  provider: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true  # ✅ THIS IS THE KEY LINE FOR ICONS
+
+  # Uncomment the following lines if you have assets to add:
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: fonts/CustomFont-Regular.ttf
+  #       - asset: fonts/CustomFont-Bold.ttf
+  #         weight: 700
