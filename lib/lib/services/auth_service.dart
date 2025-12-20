@@ -62,7 +62,7 @@ class AuthService extends ChangeNotifier {
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'phone_number': phoneNumber,
+          'phone': phoneNumber,
           'password': password,
         }),
       ).timeout(
@@ -114,6 +114,7 @@ class AuthService extends ChangeNotifier {
     required String phoneNumber,
     required String password,
     required String fullName,
+    required String email,
   }) async {
     try {
       print('📤 Attempting registration for: $phoneNumber');
@@ -122,9 +123,10 @@ class AuthService extends ChangeNotifier {
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'phone': phoneNumber,
+          'phone_number': phoneNumber,
           'password': password,
           'full_name': fullName,
+          'email':email
         }),
       );
 

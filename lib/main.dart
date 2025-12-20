@@ -1,3 +1,4 @@
+import 'package:bakerstack/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'lib/services/auth_service.dart';
@@ -17,6 +18,7 @@ void main() {
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previous) => ApiService(authService),
         ),
+        ChangeNotifierProvider(create: (_) => NotificationService())
       ],
       child: BakerStackApp(),
     ),
