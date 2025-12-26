@@ -74,7 +74,25 @@ class _MainScreenState extends State<MainScreen> {
                 ),
 
                 // Marketplace (Circular Button - Special)
-                SizedBox(width: 56), // Space for the circular button
+                // Space for circular button with label underneath
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 24), // Space for the floating button above
+                      SizedBox(height: 2),
+                      Text(
+                        'Marketplace',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _currentIndex == 2 ? Color(0xFF667eea) : Color(0xFF9CA3AF),
+                          fontWeight: _currentIndex == 2 ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Notifications with badge (NO PROVIDER)
                 Expanded(
@@ -167,7 +185,7 @@ class _MainScreenState extends State<MainScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: isActive ? Color(0xFF667eea) : Color(0xFF9CA3AF),
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),

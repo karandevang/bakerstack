@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import 'wishlist_screen.dart'; // Add this
+import 'checkout_screen.dart'; // Add this
 
 class CartScreen extends StatefulWidget {
   @override
@@ -25,7 +27,51 @@ class _CartScreenState extends State<CartScreen> {
 
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      final cart = await apiService.getCart();
+
+      // TODO: Uncomment when API is ready
+      // final cart = await apiService.getCart();
+
+      // Mock data for testing
+      await Future.delayed(Duration(seconds: 1));
+      final cart = {
+        'items': [
+          {
+            'id': '1',
+            'product': {
+              'id': '1',
+              'name': 'Premium Cake Box - 10 inch White',
+              'price': 245.0,
+              'image_url': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
+            },
+            'quantity': 2,
+            'subtotal': 490.0,
+          },
+          {
+            'id': '2',
+            'product': {
+              'id': '2',
+              'name': 'Cupcake Boxes - 6 Cavity Clear',
+              'price': 180.0,
+              'image_url': 'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7',
+            },
+            'quantity': 1,
+            'subtotal': 180.0,
+          },
+          {
+            'id': '3',
+            'product': {
+              'id': '3',
+              'name': 'Baker\'s Flour - 25kg Premium Grade',
+              'price': 1200.0,
+              'image_url': 'https://images.unsplash.com/photo-1628568193889-c6a18c6f2b7c',
+            },
+            'quantity': 1,
+            'subtotal': 1200.0,
+          },
+        ],
+        'total_items': 4,
+        'total_amount': 1870.0,
+      };
 
       setState(() {
         _cartData = cart;
@@ -40,8 +86,31 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _updateQuantity(String itemId, int newQuantity) async {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      await apiService.updateCartItem(itemId, newQuantity);
-      await _loadCart();
+
+      // TODO: Uncomment when API is ready
+      // await apiService.updateCartItem(itemId, newQuantity);
+
+      // Mock update for testing
+      setState(() {
+        final items = _cartData!['items'] as List;
+        final itemIndex = items.indexWhere((item) => item['id'] == itemId);
+        if (itemIndex != -1) {
+          items[itemIndex]['quantity'] = newQuantity;
+          items[itemIndex]['subtotal'] = items[itemIndex]['product']['price'] * newQuantity;
+
+          // Recalculate totals
+          double total = 0;
+          int totalItems = 0;
+          for (var item in items) {
+            total += item['subtotal'];
+            totalItems += item['quantity'] as int;
+          }
+          _cartData!['total_amount'] = total;
+          _cartData!['total_items'] = totalItems;
+        }
+      });
+
+      // await _loadCart();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -55,8 +124,27 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _removeItem(String itemId) async {
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
-      await apiService.removeFromCart(itemId);
-      await _loadCart();
+
+      // TODO: Uncomment when API is ready
+      // await apiService.removeFromCart(itemId);
+
+      // Mock remove for testing
+      setState(() {
+        final items = _cartData!['items'] as List;
+        items.removeWhere((item) => item['id'] == itemId);
+
+        // Recalculate totals
+        double total = 0;
+        int totalItems = 0;
+        for (var item in items) {
+          total += item['subtotal'];
+          totalItems += item['quantity'] as int;
+        }
+        _cartData!['total_amount'] = total;
+        _cartData!['total_items'] = totalItems;
+      });
+
+      // await _loadCart();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -128,12 +216,12 @@ class _CartScreenState extends State<CartScreen> {
                                 icon: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.favorite_border, color: Colors.white, size: 25),
+                                    Icon(Icons.favorite_border, color: Colors.white, size: 20),
                                     Text(
                                       'Wishlist',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 15,
+                                        fontSize: 10,
                                       ),
                                     ),
                                   ],
@@ -145,20 +233,18 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ],
                         ),
+                        SizedBox(height: 4),
+                        Text(
+                          hasItems
+                              ? '${_cartData!['total_items']} items in cart'
+                              : 'Your cart is empty',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-            ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(20),
-              child: Container(
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(25),
                   ),
                 ),
               ),
@@ -228,7 +314,12 @@ class _CartScreenState extends State<CartScreen> {
             ),
             child: ElevatedButton(
               onPressed: () {
-                // TODO: Navigate to checkout
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CheckoutScreen(),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
@@ -336,6 +427,41 @@ class _CartScreenState extends State<CartScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+            ),
+          ),
+          SizedBox(height: 12),
+
+          // View Wishlist Button
+          OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WishlistScreen(),
+                ),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              side: BorderSide(color: Color(0xFF667eea), width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.favorite_outline, color: Color(0xFF667eea)),
+                SizedBox(width: 8),
+                Text(
+                  'View Wishlist',
+                  style: TextStyle(
+                    color: Color(0xFF667eea),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
