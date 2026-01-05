@@ -1,498 +1,455 @@
 // lib/screens/marketplace_detail_screen.dart
-// Marketplace listing detail with Call & WhatsApp buttons
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/marketplace_service.dart';
+import '../services/auth_service.dart';
+import '../models/marketplace_item.dart';
 
 class MarketplaceDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> listing;
+  final int listingId;
 
-  MarketplaceDetailScreen({required this.listing});
+  const MarketplaceDetailScreen({
+    Key? key,
+    required this.listingId,
+  }) : super(key: key);
 
   @override
-  _MarketplaceDetailScreenState createState() => _MarketplaceDetailScreenState();
+  State<MarketplaceDetailScreen> createState() => _MarketplaceDetailScreenState();
 }
 
 class _MarketplaceDetailScreenState extends State<MarketplaceDetailScreen> {
-  int _currentImageIndex = 0;
-  final PageController _pageController = PageController();
+  final _marketplaceService = MarketplaceService();
+  final _authService = AuthService();
+
+  MarketplaceItem? _listing;
+  bool _isLoading = true;
+  bool _isOwner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadListing();
+  }
+
+  Future<void> _loadListing() async {
+    setState(() => _isLoading = true);
+
+    final listing = await _marketplaceService.getListingById(widget.listingId);
+
+    setState(() {
+      _listing = listing;
+      _isOwner = listing?.userId == _authService.userId;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _markAsSold() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Sold'),
+        content: const Text('Are you sure you want to mark this item as sold?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Mark as Sold'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final result = await _marketplaceService.markAsSold(widget.listingId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Listing updated'),
+            backgroundColor: result['success'] ? Colors.green : Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        if (result['success']) {
+          _loadListing();
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteListing() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Listing'),
+        content: const Text('Are you sure you want to delete this listing?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final result = await _marketplaceService.deleteListing(widget.listingId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Listing deleted'),
+            backgroundColor: result['success'] ? Colors.green : Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        if (result['success']) {
+          Navigator.pop(context);
+        }
+      }
+    }
+  }
+
+  Future<void> _callSeller() async {
+    final phone = _listing?.contactPhone;
+    if (phone != null) {
+      final uri = Uri.parse('tel:$phone');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
+  }
+
+  Future<void> _emailSeller() async {
+    final email = _listing?.contactEmail;
+    if (email != null) {
+      final uri = Uri.parse('mailto:$email');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final listing = widget.listing;
-    final images = listing['images'] ?? [];
-    final hasImages = images.isNotEmpty;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              // Image Gallery
-              SliverAppBar(
-                expandedHeight: 400,
-                pinned: true,
-                backgroundColor: Colors.white,
-                elevation: 0,
-                leading: Container(
-                  margin: EdgeInsets.all(8),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _listing == null
+          ? _buildErrorState()
+          : _buildListingDetail(),
+    );
+  }
+
+  Widget _buildListingDetail() {
+    return CustomScrollView(
+      slivers: [
+        // App Bar with Image
+        SliverAppBar(
+          expandedHeight: 300,
+          pinned: true,
+          backgroundColor: const Color(0xFF7B2CBF),
+          actions: _isOwner
+              ? [
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () {
+                // Navigate to edit listing screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Edit functionality coming soon'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _deleteListing,
+            ),
+          ]
+              : null,
+          flexibleSpace: FlexibleSpaceBar(
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  color: Colors.grey[200],
+                  child: Center(
+                    child: Icon(
+                      Icons.construction,
+                      size: 120,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+                Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-                    onPressed: () => Navigator.pop(context),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.3),
+                      ],
+                    ),
                   ),
                 ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    children: [
-                      // Image PageView
-                      hasImages
-                          ? PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() => _currentImageIndex = index);
-                        },
-                        itemCount: images.length,
-                        itemBuilder: (context, index) {
-                          return Container(
-                            color: Color(0xFFF5F5F5),
-                            child: Image.network(
-                              images[index],
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Icon(
-                                    Icons.image_outlined,
-                                    size: 100,
-                                    color: Color(0xFFCCCCCC),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      )
-                          : Container(
-                        color: Color(0xFFF5F5F5),
-                        child: Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 100,
-                            color: Color(0xFFCCCCCC),
-                          ),
-                        ),
+                if (_listing!.isSold)
+                  Positioned(
+                    top: 60,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
                       ),
-
-                      // Image Counter
-                      if (hasImages && images.length > 1)
-                        Positioned(
-                          bottom: 16,
-                          right: 16,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${_currentImageIndex + 1}/${images.length}',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Condition Badge
-                      Positioned(
-                        top: 60,
-                        right: 16,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getConditionColor(listing['condition']),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            listing['condition'] ?? 'Used',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Product Details
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Price
-                      Text(
-                        '₹${_formatPrice(listing['price'] ?? 0)}',
+                      child: const Text(
+                        'SOLD',
                         style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF6B73FF),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-
-                      // Title
-                      Text(
-                        listing['title'] ?? 'Listing Title',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                          height: 1.3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-
-                      // Location
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 20,
-                            color: Color(0xFF6B7280),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            '${listing['city']}, ${listing['state']}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-
-                      // Equipment Age
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule,
-                            size: 20,
-                            color: Color(0xFF6B7280),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            listing['age'] ?? 'Age not specified',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-
-                      // Posted Time
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 20,
-                            color: Color(0xFF6B7280),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Posted ${_formatTime(listing['posted_at'])}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 24),
-
-                      // Divider
-                      Divider(color: Color(0xFFE5E7EB)),
-                      SizedBox(height: 24),
-
-                      // Description
-                      Text(
-                        'Description',
-                        style: TextStyle(
+                          color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        listing['description'] ?? 'No description available',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color(0xFF4B5563),
-                          height: 1.6,
-                        ),
-                      ),
-                      SizedBox(height: 24),
-
-                      // Divider
-                      Divider(color: Color(0xFFE5E7EB)),
-                      SizedBox(height: 24),
-
-                      // Seller Info
-                      Text(
-                        'Seller Information',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.person_outline,
-                            size: 20,
-                            color: Color(0xFF6B7280),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            listing['contact_name'] ?? 'Seller',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF4B5563),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 120), // Minimal space - reduced from 24!
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Bottom Action Buttons
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 12), // Top padding reduced to 8px
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false, // Don't add top padding!
-                child: Row(
-                  children: [
-                    // Call Button (White with Purple Border)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _makeCall(listing['contact_phone']),
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(
-                            color: Color(0xFF6B73FF),
-                            width: 2,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.phone,
-                              color: Color(0xFF6B73FF),
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Call',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF6B73FF),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
-                    SizedBox(width: 12),
+                  ),
+              ],
+            ),
+          ),
+        ),
 
-                    // WhatsApp Button (Green)
-                    Expanded(
+        // Equipment Details
+        SliverToBoxAdapter(
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Condition Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getConditionColor(_listing!.condition).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _listing!.condition.toUpperCase(),
+                      style: TextStyle(
+                        color: _getConditionColor(_listing!.condition),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Equipment Name
+                  Text(
+                    _listing!.equipmentName,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Price
+                  Text(
+                    _listing!.formattedPrice,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF7B2CBF),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Description
+                  const Text(
+                    'Description',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _listing!.description,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Seller Contact (if not owner)
+                  if (!_isOwner) ...[
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Seller Contact',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildContactButton(
+                      icon: Icons.phone,
+                      label: _listing!.contactPhone,
+                      onTap: _callSeller,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildContactButton(
+                      icon: Icons.email,
+                      label: _listing!.contactEmail,
+                      onTap: _emailSeller,
+                    ),
+                  ],
+
+                  // Owner Actions
+                  if (_isOwner && !_listing!.isSold) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
                       child: ElevatedButton(
-                        onPressed: () => _openWhatsApp(listing['contact_phone']),
+                        onPressed: _markAsSold,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF25D366), // WhatsApp green
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          elevation: 0,
+                          backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'WhatsApp',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        child: const Text(
+                          'MARK AS SOLD',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ],
+
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF7B2CBF).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF7B2CBF).withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFF7B2CBF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+            const Icon(Icons.chevron_right, color: Color(0xFF7B2CBF)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 80, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Listing not found',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Go Back'),
           ),
         ],
       ),
     );
   }
 
-  Color _getConditionColor(String? condition) {
-    switch (condition) {
-      case 'Like New':
-        return Color(0xFF10B981);
-      case 'Good':
-        return Color(0xFF3B82F6);
-      case 'Fair':
-        return Color(0xFFF59E0B);
-      case 'Poor':
-        return Color(0xFFEF4444);
+  Color _getConditionColor(String condition) {
+    switch (condition.toLowerCase()) {
+      case 'excellent':
+        return Colors.green;
+      case 'good':
+        return Colors.blue;
+      case 'fair':
+        return Colors.orange;
+      case 'poor':
+        return Colors.red;
       default:
-        return Color(0xFF6B7280);
+        return Colors.grey;
     }
-  }
-
-  String _formatPrice(dynamic price) {
-    final priceInt = price is int ? price : int.tryParse(price.toString()) ?? 0;
-    if (priceInt >= 100000) {
-      return '${(priceInt / 100000).toStringAsFixed(1)}L';
-    } else if (priceInt >= 1000) {
-      return '${(priceInt / 1000).toStringAsFixed(0)}K';
-    }
-    return priceInt.toString();
-  }
-
-  String _formatTime(dynamic postedAt) {
-    if (postedAt == null) return 'recently';
-    try {
-      final date = DateTime.parse(postedAt.toString());
-      final now = DateTime.now();
-      final difference = now.difference(date);
-
-      if (difference.inDays == 0) {
-        return 'today';
-      } else if (difference.inDays == 1) {
-        return 'yesterday';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays} days ago';
-      } else {
-        return '${(difference.inDays / 7).floor()} weeks ago';
-      }
-    } catch (e) {
-      return 'recently';
-    }
-  }
-
-  Future<void> _makeCall(String? phone) async {
-    if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Phone number not available'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
-      );
-      return;
-    }
-
-    final Uri phoneUri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not open phone dialer'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
-      );
-    }
-  }
-
-  Future<void> _openWhatsApp(String? phone) async {
-    if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Phone number not available'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
-      );
-      return;
-    }
-
-    // Remove any non-digit characters
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanPhone');
-
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not open WhatsApp'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
   }
 }
-

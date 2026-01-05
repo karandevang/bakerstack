@@ -1,318 +1,568 @@
 // lib/services/auth_service.dart
-
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
+import '../models/user.dart';
+import 'api_service.dart';
 
-class AuthService extends ChangeNotifier {
-  // API Configuration
-  // Change this based on your setup:
-  // Android Emulator: http://10.0.2.2:8000/api/v1
-  // iOS Simulator: http://localhost:8000/api/v1
-  // Real Device: http://YOUR_COMPUTER_IP:8000/api/v1
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+class AuthService {
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
+  final ApiService _apiService = ApiService();
+
+  User? _currentUser;
   String? _token;
-  Map<String, dynamic>? _user;
-  bool _isAuthenticated = false;
+  int? _userId;
 
-  // Getters
-  bool get isAuthenticated => _isAuthenticated;
+  User? get currentUser => _currentUser;
   String? get token => _token;
-  Map<String, dynamic>? get user => _user;
-  String get userName => _user?['full_name'] ?? 'User';
-  String get userPhone => _user?['phone'] ?? '';
-  String get userEmail => _user?['email'] ?? '';
+  int? get userId => _userId;
+  bool get isAuthenticated => _token != null;
 
-  /// Initialize - Load token from storage on app start
-  Future<void> initialize() async {
+  // ============================================================================
+  // AUTHENTICATION METHODS
+  // ============================================================================
+
+  /// Login with phone and password
+  Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
-      print('🔄 Initializing AuthService...');
-      final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString('token');
-      final userJson = prefs.getString('user');
+      print('📱 Attempting login with phone: $phone');
 
-      if (_token != null && userJson != null) {
-        _user = jsonDecode(userJson);
-        _isAuthenticated = true;
-        print('✅ User authenticated: ${_user?['full_name']}');
-      } else {
-        print('ℹ️ No saved credentials found');
-        _isAuthenticated = false;
-      }
-      notifyListeners();
-    } catch (e) {
-      print('❌ Initialize error: $e');
-      _isAuthenticated = false;
-      notifyListeners();
-    }
-  }
-
-  /// Login with phone number and password
-  Future<Map<String, dynamic>> login({
-    required String phoneNumber,
-    required String password,
-  }) async {
-    try {
-      print('📤 Attempting login for: $phoneNumber');
-      print('📡 API URL: $baseUrl/auth/login');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': phoneNumber,
+      final response = await _apiService.post(
+        ApiConfig.authLogin,
+        {
+          'phone': phone,
           'password': password,
-        }),
-      ).timeout(
-        Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Connection timeout. Please check if backend is running.');
         },
+        auth: false, // ✅ No auth needed for login
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📄 Response body: ${response.body}');
+      print('📦 Login response: $response');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _token = data['access_token'];
-        _user = data['user'];
-        _isAuthenticated = true;
-
-        // Save to SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _token!);
-        await prefs.setString('user', jsonEncode(_user));
-
-        print('✅ Login successful: ${_user?['full_name']}');
-        print('🔑 Token saved');
-        notifyListeners();
-        return data;
+      if (response['success']) {
+        return await _handleAuthResponse(response['data'], 'login');
       } else {
-        final error = jsonDecode(response.body);
-        final errorMessage = error['detail'] ?? 'Login failed';
-        print('❌ Login failed: $errorMessage');
-        throw Exception(errorMessage);
+        print('❌ Login failed: ${response['error']}');
+        return {
+          'success': false,
+          'error': response['error'] ?? 'Login failed',
+        };
       }
     } catch (e) {
       print('❌ Login error: $e');
-      if (e.toString().contains('Failed host lookup') ||
-          e.toString().contains('SocketException')) {
-        throw Exception('Cannot connect to server. Please check:\n1. Backend is running\n2. Base URL is correct\n3. Network connection');
-      }
-      if (e.toString().contains('timeout')) {
-        throw Exception('Connection timeout. Backend may not be running.');
-      }
-      throw Exception(e.toString().replaceAll('Exception: ', ''));
+      return {
+        'success': false,
+        'error': 'Login error: $e',
+      };
     }
   }
 
   /// Register new user
   Future<Map<String, dynamic>> register({
-    required String phoneNumber,
+    required String fullName,
+    required String phone,
+    required String email,
     required String password,
+  }) async {
+    try {
+      print('📝 Attempting registration for: $phone');
+
+      final response = await _apiService.post(
+        ApiConfig.authRegister,
+        {
+          'full_name': fullName,
+          'phone': phone,
+          'email': email,
+          'password': password,
+        },
+        auth: false, // ✅ No auth needed for registration
+      );
+
+      print('📦 Register response: $response');
+
+      if (response['success']) {
+        return await _handleAuthResponse(response['data'], 'register');
+      } else {
+        print('❌ Registration failed: ${response['error']}');
+        return {
+          'success': false,
+          'error': response['error'] ?? 'Registration failed',
+        };
+      }
+    } catch (e) {
+      print('❌ Registration error: $e');
+      return {
+        'success': false,
+        'error': 'Registration error: $e',
+      };
+    }
+  }
+
+  /// Handle authentication response (common logic for login/register)
+  Future<Map<String, dynamic>> _handleAuthResponse(
+      Map<String, dynamic> data,
+      String operation,
+      ) async {
+    try {
+      // Extract token
+      _token = data['access_token'] as String?;
+
+      if (_token == null || _token!.isEmpty) {
+        print('❌ No access token in $operation response');
+        return {
+          'success': false,
+          'error': 'No access token received from server',
+        };
+      }
+
+      print('🔑 Token received: ${_token!.substring(0, 20)}...');
+
+      // Set token in API service
+      _apiService.setToken(_token!);
+
+      // Extract user data
+      final userData = data['user'];
+      print('👤 User data: $userData');
+
+      if (userData == null) {
+        print('❌ No user data in $operation response');
+        return {
+          'success': false,
+          'error': 'No user data received from server',
+        };
+      }
+
+      // Parse user
+      try {
+        _currentUser = User.fromJson(userData);
+        _userId = _currentUser!.id;
+        print('✅ User parsed successfully: ${_currentUser!.fullName} (ID: $_userId)');
+      } catch (e) {
+        print('❌ Error parsing user: $e');
+        print('User data was: $userData');
+        return {
+          'success': false,
+          'error': 'Failed to parse user data: $e',
+        };
+      }
+
+      // Save session
+      await _saveSession();
+      print('💾 Session saved');
+
+      return {
+        'success': true,
+        'user': _currentUser,
+        'token': _token,
+      };
+    } catch (e) {
+      print('❌ Error handling auth response: $e');
+      return {
+        'success': false,
+        'error': 'Failed to process authentication: $e',
+      };
+    }
+  }
+
+  /// Get current user from backend
+  Future<User?> getCurrentUser() async {
+    try {
+      if (_token == null) {
+        print('❌ No token available for getCurrentUser');
+        return null;
+      }
+
+      print('🔄 Fetching current user from backend...');
+
+      final response = await _apiService.get(
+        ApiConfig.authMe,
+        auth: true, // ✅ Requires authentication
+      );
+
+      if (response['success']) {
+        final userData = response['data'];
+        _currentUser = User.fromJson(userData);
+        _userId = _currentUser!.id;
+        await _saveSession();
+        print('✅ Current user fetched: ${_currentUser!.fullName}');
+        return _currentUser;
+      } else {
+        print('❌ Failed to get current user: ${response['error']}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Get current user error: $e');
+      return null;
+    }
+  }
+
+  /// Refresh authentication token
+  Future<Map<String, dynamic>> refreshToken() async {
+    try {
+      if (_token == null) {
+        return {
+          'success': false,
+          'error': 'No token to refresh',
+        };
+      }
+
+      print('🔄 Refreshing token...');
+
+      final response = await _apiService.post(
+        ApiConfig.authRefresh,
+        {},
+        auth: true, // ✅ Requires authentication
+      );
+
+      if (response['success']) {
+        final newToken = response['data']['access_token'] as String?;
+
+        if (newToken != null) {
+          _token = newToken;
+          _apiService.setToken(newToken);
+          await _saveSession();
+          print('✅ Token refreshed successfully');
+
+          return {
+            'success': true,
+            'token': newToken,
+          };
+        }
+      }
+
+      return {
+        'success': false,
+        'error': 'Failed to refresh token',
+      };
+    } catch (e) {
+      print('❌ Token refresh error: $e');
+      return {
+        'success': false,
+        'error': 'Token refresh error: $e',
+      };
+    }
+  }
+
+  // ============================================================================
+  // PROFILE MANAGEMENT
+  // ============================================================================
+
+  /// Update user profile
+  Future<Map<String, dynamic>> updateProfile({
     required String fullName,
     required String email,
   }) async {
     try {
-      print('📤 Attempting registration for: $phoneNumber');
+      print('📝 Updating profile...');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone_number': phoneNumber,
-          'password': password,
+      final response = await _apiService.put(
+        ApiConfig.profileUpdate,
+        {
           'full_name': fullName,
-          'email':email
-        }),
+          'email': email,
+        },
+        auth: true, // ✅ Requires authentication
       );
 
-      print('📥 Response status: ${response.statusCode}');
+      if (response['success']) {
+        final userData = response['data'];
+        _currentUser = User.fromJson(userData);
+        await _saveSession();
+        print('✅ Profile updated successfully');
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('✅ Registration successful');
-        return data;
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['detail'] ?? 'Registration failed');
+        return {
+          'success': true,
+          'user': _currentUser,
+        };
       }
+
+      return response;
     } catch (e) {
-      print('❌ Registration error: $e');
-      throw Exception('Registration error: ${e.toString().replaceAll('Exception: ', '')}');
+      print('❌ Update profile error: $e');
+      return {
+        'success': false,
+        'error': 'Failed to update profile: $e',
+      };
     }
   }
 
-  /// Send OTP to phone number
-  Future<void> sendOTP(String phoneNumber) async {
-    try {
-      print('📤 Sending OTP to: $phoneNumber');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/send-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'phone': phoneNumber}),
-      );
-
-      if (response.statusCode == 200) {
-        print('✅ OTP sent successfully');
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['detail'] ?? 'Failed to send OTP');
-      }
-    } catch (e) {
-      print('❌ Send OTP error: $e');
-      throw Exception('Send OTP error: ${e.toString().replaceAll('Exception: ', '')}');
-    }
-  }
-
-  /// Verify OTP
-  Future<Map<String, dynamic>> verifyOTP({
-    required String phoneNumber,
-    required String otp,
+  /// Change password
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
   }) async {
     try {
-      print('📤 Verifying OTP for: $phoneNumber');
+      print('🔐 Changing password...');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/verify-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': phoneNumber,
-          'otp': otp,
-        }),
+      final response = await _apiService.post(
+        ApiConfig.profileChangePassword,
+        {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+        auth: true, // ✅ Requires authentication
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _token = data['access_token'];
-        _user = data['user'];
-        _isAuthenticated = true;
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _token!);
-        await prefs.setString('user', jsonEncode(_user));
-
-        print('✅ OTP verified successfully');
-        notifyListeners();
-        return data;
+      if (response['success']) {
+        print('✅ Password changed successfully');
       } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['detail'] ?? 'Invalid OTP');
+        print('❌ Password change failed: ${response['error']}');
       }
+
+      return response;
     } catch (e) {
-      print('❌ Verify OTP error: $e');
-      throw Exception('Verify OTP error: ${e.toString().replaceAll('Exception: ', '')}');
+      print('❌ Change password error: $e');
+      return {
+        'success': false,
+        'error': 'Failed to change password: $e',
+      };
+    }
+  }
+
+  /// Delete account
+  Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      print('🗑️ Deleting account...');
+
+      final response = await _apiService.delete(
+        ApiConfig.profileDelete,
+        auth: true, // ✅ Requires authentication
+      );
+
+      if (response['success']) {
+        await logout();
+        print('✅ Account deleted successfully');
+      }
+
+      return response;
+    } catch (e) {
+      print('❌ Delete account error: $e');
+      return {
+        'success': false,
+        'error': 'Failed to delete account: $e',
+      };
+    }
+  }
+
+  // ============================================================================
+  // SESSION MANAGEMENT
+  // ============================================================================
+
+  /// Save session to SharedPreferences
+  Future<void> _saveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (_token != null) {
+        await prefs.setString('auth_token', _token!);
+        print('💾 Token saved to storage');
+      }
+
+      if (_currentUser != null) {
+        await prefs.setString('user_data', jsonEncode(_currentUser!.toJson()));
+        await prefs.setInt('user_id', _currentUser!.id);
+        print('💾 User data saved to storage');
+      }
+
+      print('✅ Session saved to SharedPreferences');
+    } catch (e) {
+      print('❌ Error saving session: $e');
+    }
+  }
+
+  /// Load session from SharedPreferences
+  Future<bool> loadSession() async {
+    try {
+      print('🔄 Loading session from storage...');
+      final prefs = await SharedPreferences.getInstance();
+
+      _token = prefs.getString('auth_token');
+      final userJson = prefs.getString('user_data');
+      _userId = prefs.getInt('user_id');
+
+      if (_token != null && userJson != null) {
+        _apiService.setToken(_token!);
+        _currentUser = User.fromJson(jsonDecode(userJson));
+        print('✅ Session loaded successfully');
+        print('   - User: ${_currentUser!.fullName}');
+        print('   - User ID: $_userId');
+        print('   - Token: ${_token!.substring(0, 20)}...');
+        return true;
+      }
+
+      print('⚠️ No saved session found');
+      return false;
+    } catch (e) {
+      print('❌ Error loading session: $e');
+      return false;
+    }
+  }
+
+  /// Clear session
+  Future<void> _clearSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.remove('auth_token');
+      await prefs.remove('user_data');
+      await prefs.remove('user_id');
+
+      print('✅ Session cleared from storage');
+    } catch (e) {
+      print('❌ Error clearing session: $e');
     }
   }
 
   /// Logout
   Future<void> logout() async {
-    print('👋 Logging out user: ${_user?['full_name']}');
-
-    _token = null;
-    _user = null;
-    _isAuthenticated = false;
-
-    // Remove from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('user');
-
-    print('✅ User logged out');
-    notifyListeners();
-  }
-
-  /// Get authorization header for API requests
-  Map<String, String> getAuthHeaders() {
-    if (_token == null) {
-      throw Exception('Not authenticated. Please login.');
-    }
-    return {
-      'Authorization': 'Bearer $_token',
-      'Content-Type': 'application/json',
-    };
-  }
-
-  /// Check if token is valid (optional - for future use)
-  Future<bool> validateToken() async {
-    if (_token == null) return false;
-
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/profile'),
-        headers: getAuthHeaders(),
-      );
+      print('👋 Logging out...');
 
-      if (response.statusCode == 200) {
-        print('✅ Token is valid');
-        return true;
-      } else {
-        print('⚠️ Token is invalid');
+      // Call logout endpoint if token exists
+      if (_token != null) {
+        try {
+          await _apiService.post(
+            ApiConfig.authLogout,
+            {},
+            auth: true, // ✅ Requires authentication
+          );
+          print('✅ Server logout successful');
+        } catch (e) {
+          print('⚠️ Server logout failed (will continue with local logout): $e');
+        }
+      }
+
+      // Clear local session
+      await _clearSession();
+
+      // Clear instance variables
+      _token = null;
+      _currentUser = null;
+      _userId = null;
+      _apiService.clearToken();
+
+      print('✅ Logout successful');
+    } catch (e) {
+      print('❌ Logout error: $e');
+    }
+  }
+
+  /// Check if session is valid (not expired)
+  Future<bool> validateSession() async {
+    try {
+      if (_token == null) {
         return false;
       }
+
+      // Try to get current user to validate token
+      final user = await getCurrentUser();
+      return user != null;
     } catch (e) {
-      print('❌ Token validation error: $e');
+      print('❌ Session validation error: $e');
       return false;
     }
   }
 
-  /// Generic GET request with auth
-  Future<dynamic> get(String endpoint) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: getAuthHeaders(),
-      );
+  // ============================================================================
+  // VALIDATION HELPERS
+  // ============================================================================
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Request failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('GET error: $e');
+  /// Validate phone number format
+  static bool isValidPhone(String phone) {
+    if (phone.isEmpty) return false;
+    // Remove any spaces or dashes
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s-]'), '');
+    // Check if it's exactly 10 digits
+    return cleanPhone.length == 10 && RegExp(r'^[0-9]+$').hasMatch(cleanPhone);
+  }
+
+  /// Validate email format
+  static bool isValidEmail(String email) {
+    if (email.isEmpty) return false;
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
+  }
+
+  /// Validate password strength
+  static bool isValidPassword(String password) {
+    return password.length >= 6;
+  }
+
+  /// Get password strength indicator
+  static String getPasswordStrength(String password) {
+    if (password.isEmpty) return '';
+    if (password.length < 6) return 'Too short';
+    if (password.length < 8) return 'Weak';
+
+    int strength = 0;
+
+    // Check for lowercase
+    if (RegExp(r'[a-z]').hasMatch(password)) strength++;
+
+    // Check for uppercase
+    if (RegExp(r'[A-Z]').hasMatch(password)) strength++;
+
+    // Check for numbers
+    if (RegExp(r'[0-9]').hasMatch(password)) strength++;
+
+    // Check for special characters
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) strength++;
+
+    if (password.length >= 12 && strength >= 3) return 'Strong';
+    if (password.length >= 10 && strength >= 2) return 'Medium';
+    return 'Weak';
+  }
+
+  /// Get password strength score (0-3)
+  static int getPasswordStrengthScore(String password) {
+    if (password.isEmpty) return 0;
+    if (password.length < 6) return 0;
+
+    final strength = getPasswordStrength(password);
+
+    switch (strength) {
+      case 'Too short':
+        return 0;
+      case 'Weak':
+        return 1;
+      case 'Medium':
+        return 2;
+      case 'Strong':
+        return 3;
+      default:
+        return 0;
     }
   }
 
-  /// Generic POST request with auth
-  Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: getAuthHeaders(),
-        body: jsonEncode(body),
-      );
+  // ============================================================================
+  // UTILITY METHODS
+  // ============================================================================
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['detail'] ?? 'Request failed');
-      }
-    } catch (e) {
-      throw Exception('POST error: $e');
+  /// Get authentication status message
+  String getAuthStatusMessage() {
+    if (!isAuthenticated) {
+      return 'Not authenticated';
     }
+
+    if (_currentUser != null) {
+      return 'Authenticated as ${_currentUser!.fullName}';
+    }
+
+    return 'Authenticated';
   }
 
-  /// Generic DELETE request with auth
-  Future<dynamic> delete(String endpoint) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: getAuthHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Request failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('DELETE error: $e');
-    }
+  /// Print authentication status (for debugging)
+  void printAuthStatus() {
+    print('╔════════════════════════════════════════╗');
+    print('║      Authentication Status             ║');
+    print('╠════════════════════════════════════════╣');
+    print('║ Authenticated: $isAuthenticated');
+    print('║ User: ${_currentUser?.fullName ?? 'None'}');
+    print('║ User ID: ${_userId ?? 'None'}');
+    print('║ Token: ${_token != null ? '${_token!.substring(0, 20)}...' : 'None'}');
+    print('╚════════════════════════════════════════╝');
   }
 }

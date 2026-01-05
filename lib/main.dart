@@ -1,134 +1,336 @@
-import 'package:bakerstack/services/notification_service.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'lib/services/auth_service.dart';
-import 'lib/services/api_service.dart';  // ← ADD THIS IMPORT
-import 'lib/screens/login_screen.dart';
-import 'lib/screens/main_screen.dart';
+// lib/main.dart
+import 'package:bakerstack/screens/cart_screen.dart';
+import 'package:bakerstack/screens/checkout_screen.dart';
+import 'package:bakerstack/screens/create_listing_screen.dart';
+import 'package:bakerstack/screens/delivery_addresses_screen.dart';
+import 'package:bakerstack/screens/edit_profile_screen.dart';
 
+import 'package:bakerstack/screens/home_screen.dart';
+import 'package:bakerstack/screens/login_screen.dart';
+import 'package:bakerstack/screens/marketplace_detail_screen.dart';
+import 'package:bakerstack/screens/marketplace_feed_screen.dart';
+import 'package:bakerstack/screens/my_listing_screen.dart';
+import 'package:bakerstack/screens/notifications_screen.dart';
+import 'package:bakerstack/screens/order_detail_screen.dart';
+import 'package:bakerstack/screens/order_history_screen.dart';
+import 'package:bakerstack/screens/product_detail_screen.dart';
+import 'package:bakerstack/screens/profile_screen.dart';
+import 'package:bakerstack/screens/register_screen.dart';
+import 'package:bakerstack/screens/splash_screen.dart';
+import 'package:bakerstack/screens/wishlist_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+// Screens
 void main() {
-  runApp(
-    MultiProvider(  // ← CHANGE: ChangeNotifierProvider → MultiProvider
-      providers: [
-        // AuthService Provider
-        ChangeNotifierProvider(
-          create: (context) => AuthService(),
-        ),
-        // ApiService Provider - ADD THIS!
-        ProxyProvider<AuthService, ApiService>(
-          update: (context, authService, previous) => ApiService(authService),
-        ),
-        ChangeNotifierProvider(create: (_) => NotificationService())
-      ],
-      child: BakerStackApp(),
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Set preferred orientations
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Set system UI overlay style
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+
+  runApp(const BakerStackApp());
 }
 
 class BakerStackApp extends StatelessWidget {
+  const BakerStackApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BakerStack',
-      theme: ThemeData(
-        primarySwatch: MaterialColor(0xFF667eea, {
-          50: Color(0xFFE8EBFE),
-          100: Color(0xFFC5CEFC),
-          200: Color(0xFF9EAEF9),
-          300: Color(0xFF778DF6),
-          400: Color(0xFF5975F4),
-          500: Color(0xFF667eea),
-          600: Color(0xFF4A5DD8),
-          700: Color(0xFF3A4BC4),
-          800: Color(0xFF2C3AB0),
-          900: Color(0xFF1A2190),
-        }),
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: Colors.white,
-      ),
       debugShowCheckedModeBanner: false,
-      home: AuthWrapper(),
-    );
-  }
-}
 
-class AuthWrapper extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Provider.of<AuthService>(context, listen: false).initialize(),
-      builder: (context, snapshot) {
-        // Show loading screen while checking auth status
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(60),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 20,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text('🛒', style: TextStyle(fontSize: 60)),
-                      ),
-                    ),
-                    SizedBox(height: 40),
-                    // Loading indicator
-                    CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Loading...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      // Theme
+      theme: ThemeData(
+        primaryColor: const Color(0xFF7B2CBF),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF7B2CBF),
+          primary: const Color(0xFF7B2CBF),
+          secondary: const Color(0xFF9D4EDD),
+        ),
+        scaffoldBackgroundColor: Colors.grey[50],
+        fontFamily: 'Roboto',
+
+        // AppBar Theme
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Color(0xFF7B2CBF),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+        ),
+
+        // ElevatedButton Theme
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7B2CBF),
+            foregroundColor: Colors.white,
+            elevation: 2,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        // TextButton Theme
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF7B2CBF),
+          ),
+        ),
+
+        // OutlinedButton Theme
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF7B2CBF),
+            side: const BorderSide(color: Color(0xFF7B2CBF)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        // InputDecoration Theme
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[50],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF7B2CBF), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+
+        // Card Theme
+        // CORRECT VERSION - Replace in main.dart
+
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          color: Colors.white,
+        ),
+
+        // FloatingActionButton Theme
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF7B2CBF),
+          foregroundColor: Colors.white,
+          elevation: 4,
+        ),
+
+        // SnackBar Theme
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentTextStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+
+        // Dialog Theme
+        dialogTheme: DialogThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+        ),
+
+        // Bottom Sheet Theme
+        bottomSheetTheme: const BottomSheetThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          backgroundColor: Colors.white,
+        ),
+
+        // Divider Theme
+        dividerTheme: DividerThemeData(
+          color: Colors.grey[300],
+          thickness: 1,
+        ),
+      ),
+
+      // Initial Route
+      initialRoute: '/',
+
+      // Routes
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/cart': (context) => const CartScreen(),
+        '/checkout': (context) => const CheckoutScreen(),
+        '/wishlist': (context) => const WishlistScreen(),
+        '/order-history': (context) => const OrderHistoryScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/edit-profile': (context) => const EditProfileScreen(),
+        '/addresses': (context) => const DeliveryAddressesScreen(),
+        '/marketplace': (context) => const MarketplaceFeedScreen(),
+        '/create-listing': (context) => const CreateListingScreen(),
+        '/my-listings': (context) => const MyListingsScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+      },
+
+      // On Generate Route (for routes with arguments)
+      onGenerateRoute: (settings) {
+        // Product Detail Screen
+        if (settings.name == '/product-detail') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              productId: args['productId'] as int,
             ),
           );
         }
 
-        // Show appropriate screen based on auth status
-        return Consumer<AuthService>(
-          builder: (context, authService, _) {
-            if (authService.isAuthenticated) {
-              return MainScreen();
-            } else {
-              return LoginScreen();
-            }
-          },
+        // Order Detail Screen
+        if (settings.name == '/order-detail') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => OrderDetailScreen(
+              orderId: args['orderId'] as int,
+            ),
+          );
+        }
+
+        // Marketplace Detail Screen
+        if (settings.name == '/marketplace-detail') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => MarketplaceDetailScreen(
+              listingId: args['listingId'] as int,
+            ),
+          );
+        }
+
+        // Unknown route
+        return MaterialPageRoute(
+          builder: (context) => const NotFoundScreen(),
         );
       },
+
+      // Unknown Route Handler
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => const NotFoundScreen(),
+        );
+      },
+    );
+  }
+}
+
+// 404 Not Found Screen
+class NotFoundScreen extends StatelessWidget {
+  const NotFoundScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF7B2CBF), Color(0xFF9D4EDD)],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 120,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '404',
+                style: TextStyle(
+                  fontSize: 72,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Page Not Found',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'The page you are looking for doesn\'t exist.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+              const SizedBox(height: 48),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/home',
+                        (route) => false,
+                  );
+                },
+                icon: const Icon(Icons.home),
+                label: const Text('GO TO HOME'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF7B2CBF),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

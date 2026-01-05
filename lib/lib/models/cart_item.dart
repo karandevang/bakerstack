@@ -1,105 +1,73 @@
-// lib/models/cart_item.dart - Final Comprehensive Version
-
-import 'product.dart';
+import 'package:bakerstack/models/product.dart';
 
 class CartItem {
-  final String id;
-  final Product product;
+  final int id;
+  final int userId;
+  final int productId;
   final int quantity;
-  final double subtotal;
+  final Product? product; // Nested product object from backend
+  final DateTime createdAt;
 
   CartItem({
     required this.id,
-    required this.product,
+    required this.userId,
+    required this.productId,
     required this.quantity,
-    required this.subtotal,
+    this.product,
+    required this.createdAt,
   });
 
   /// Create CartItem from API JSON response
   factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
-      id: json['id']?.toString() ?? '',
-      product: Product.fromJson(json['product']),
-      quantity: _parseInt(json['quantity']),
-      subtotal: _parseDouble(json['subtotal']),
+      id: json['id'] as int,
+      userId: json['user_id'] as int,
+      productId: json['product_id'] as int,
+      quantity: json['quantity'] as int,
+      product: json['product'] != null
+          ? Product.fromJson(json['product'] as Map<String, dynamic>)
+          : null,
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
-  /// Convert CartItem to JSON for API requests
+  /// Convert CartItem to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'product': product.toJson(),
+      'user_id': userId,
+      'product_id': productId,
       'quantity': quantity,
-      'subtotal': subtotal,
+      if (product != null) 'product': product!.toJson(),
+      'created_at': createdAt.toIso8601String(),
     };
   }
 
-  // ==================== HELPER PARSING METHODS ====================
-
-  /// Safely parse double values
-  static double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
+  /// Calculate total price for this cart item
+  double get totalPrice {
+    if (product == null) return 0.0;
+    return product!.price * quantity;
   }
 
-  /// Safely parse int values
-  static int _parseInt(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
+  /// Get formatted total price
+  String get formattedTotalPrice => '₹${totalPrice.toStringAsFixed(2)}';
 
-  // ==================== COMPUTED PROPERTIES ====================
-
-  /// Calculate total savings for this cart item
-  double get savings => (product.mrp - product.price) * quantity;
-
-  /// Get formatted subtotal string
-  String get formattedSubtotal => '₹${subtotal.toStringAsFixed(0)}';
-
-  /// Get formatted savings string
-  String get formattedSavings => '₹${savings.toStringAsFixed(0)}';
-
-  /// Get formatted unit price
-  String get formattedUnitPrice => product.price.toStringAsFixed(0);
-
-  // ==================== UTILITY METHODS ====================
-
-  /// Copy with method for easy updates
+  /// Create a copy with updated fields
   CartItem copyWith({
-    String? id,
-    Product? product,
+    int? id,
+    int? userId,
+    int? productId,
     int? quantity,
-    double? subtotal,
+    Product? product,
+    DateTime? createdAt,
   }) {
     return CartItem(
       id: id ?? this.id,
-      product: product ?? this.product,
+      userId: userId ?? this.userId,
+      productId: productId ?? this.productId,
       quantity: quantity ?? this.quantity,
-      subtotal: subtotal ?? this.subtotal,
+      product: product ?? this.product,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
-
-  /// String representation for debugging
-  @override
-  String toString() {
-    return 'CartItem(id: $id, product: ${product.name}, quantity: $quantity, subtotal: $subtotal)';
-  }
-
-  /// Equality operator
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is CartItem && other.id == id;
-  }
-
-  /// Hash code
-  @override
-  int get hashCode => id.hashCode;
 }

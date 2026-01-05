@@ -1,42 +1,39 @@
+// lib/models/user.dart
 class User {
   final int id;
-  final String phoneNumber;
-  final String? fullName;
-  final String? email;
-  final bool isActive;
-  final bool isVerified;
+  final String fullName;
+  final String phone;
+  final String email;
   final DateTime createdAt;
 
   User({
     required this.id,
-    required this.phoneNumber,
-    this.fullName,
-    this.email,
-    required this.isActive,
-    required this.isVerified,
+    required this.fullName,
+    required this.phone,
+    required this.email,
     required this.createdAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      phoneNumber: json['phone_number'],
-      fullName: json['full_name'],
-      email: json['email'],
-      isActive: json['is_active'],
-      isVerified: json['is_verified'],
-      createdAt: DateTime.parse(json['created_at']),
+      id: json['id'] as int,
+      fullName: json['full_name'] as String? ?? json['fullName'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'phone_number': phoneNumber,
       'full_name': fullName,
+      'phone': phone,
       'email': email,
-      'is_active': isActive,
-      'is_verified': isVerified,
       'created_at': createdAt.toIso8601String(),
     };
   }

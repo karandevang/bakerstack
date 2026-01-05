@@ -1,132 +1,108 @@
-// lib/models/product.dart - COMPLETE VERSION
-
 class Product {
-  // All fields
-  final String id;
+  final int id; // Integer ID from backend
   final String name;
-  final String description;
+  final String? description;
+  final String category;
   final double price;
   final double mrp;
-  final int discountPercent;      // ✅ ADDED
-  final String imageUrl;
-  final String category;
-  final bool inStock;             // ✅ ADDED
-  final int stockQuantity;        // ✅ ADDED
+  final int discountPercent;
+  final String? imageUrl;
+  final bool inStock;
+  final int stockQuantity;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Product({
     required this.id,
     required this.name,
-    required this.description,
+    this.description,
+    required this.category,
     required this.price,
     required this.mrp,
-    required this.discountPercent,  // ✅ ADDED
-    required this.imageUrl,
-    required this.category,
-    this.inStock = true,            // ✅ ADDED
-    this.stockQuantity = 0,         // ✅ ADDED
+    this.discountPercent = 0,
+    this.imageUrl,
+    this.inStock = true,
+    this.stockQuantity = 0,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  // ✅ ADDED: Create Product from API JSON response
+  /// Create Product from API JSON response
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: _parseString(json['id']),
-      name: _parseString(json['name']),
-      description: _parseString(json['description']),
-      price: _parseDouble(json['price']),
-      mrp: _parseDouble(json['mrp']),
-      discountPercent: _parseInt(json['discount_percent']),
-      imageUrl: _parseString(json['image_url']),
-      category: _parseString(json['category']),
-      inStock: json['in_stock'] ?? true,
-      stockQuantity: _parseInt(json['stock_quantity']),
+      id: json['id'] as int,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      category: json['category'] as String,
+      price: (json['price'] as num).toDouble(),
+      mrp: (json['mrp'] as num).toDouble(),
+      discountPercent: json['discount_percent'] as int? ?? 0,
+      imageUrl: json['image_url'] as String?,
+      inStock: json['in_stock'] as bool? ?? true,
+      stockQuantity: json['stock_quantity'] as int? ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
-  // ✅ ADDED: Convert Product to JSON for API requests
+  /// Convert Product to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'description': description,
+      'category': category,
       'price': price,
       'mrp': mrp,
       'discount_percent': discountPercent,
       'image_url': imageUrl,
-      'category': category,
       'in_stock': inStock,
       'stock_quantity': stockQuantity,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
-  // ✅ ADDED: Helper methods for safe parsing
-  static String _parseString(dynamic value) {
-    if (value == null) return '';
-    if (value is String) return value;
-    return value.toString();
-  }
+  /// Calculated discount amount
+  double get discountAmount => mrp - price;
 
-  static double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
-  }
+  /// Check if product is on sale
+  bool get isOnSale => discountPercent > 0;
 
-  static int _parseInt(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
+  /// Get formatted price
+  String get formattedPrice => '₹${price.toStringAsFixed(2)}';
 
-  // ✅ ADDED: Computed properties
-  double get savings => mrp - price;
-  bool get isAvailable => inStock && stockQuantity > 0;
-  String get formattedPrice => '₹${price.toStringAsFixed(0)}';
-  String get formattedMrp => '₹${mrp.toStringAsFixed(0)}';
-  String get formattedDiscount => '${discountPercent}% OFF';
-  String get formattedSavings => '₹${savings.toStringAsFixed(0)}';
+  /// Get formatted MRP
+  String get formattedMrp => '₹${mrp.toStringAsFixed(2)}';
 
-  // ✅ ADDED: Utility methods
+  /// Create a copy with updated fields
   Product copyWith({
-    String? id,
+    int? id,
     String? name,
     String? description,
+    String? category,
     double? price,
     double? mrp,
     int? discountPercent,
     String? imageUrl,
-    String? category,
     bool? inStock,
     int? stockQuantity,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
+      category: category ?? this.category,
       price: price ?? this.price,
       mrp: mrp ?? this.mrp,
       discountPercent: discountPercent ?? this.discountPercent,
       imageUrl: imageUrl ?? this.imageUrl,
-      category: category ?? this.category,
       inStock: inStock ?? this.inStock,
       stockQuantity: stockQuantity ?? this.stockQuantity,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-
-  @override
-  String toString() {
-    return 'Product(id: $id, name: $name, price: $price, category: $category)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Product && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
 }
