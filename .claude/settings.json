@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Read(**/*.p12)",
+      "Read(**/*.mobileprovision)",
+      "Read(./android/key.properties)",
+      "Read(**/google-services.json)",
+      "Read(**/GoogleService-Info.plist)",
+      "Read(./build/**)",
+      "Read(./.dart_tool/**)",
+      "Read(./android/.gradle/**)",
+      "Read(./ios/Pods/**)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(git reset --hard:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter pub add:*)",
+      "Bash(flutter pub upgrade:*)",
+      "Bash(dart pub add:*)",
+      "Bash(dart pub upgrade:*)",
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(psql:*)",
+      "Bash(docker:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
