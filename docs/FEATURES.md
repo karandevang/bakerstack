@@ -58,7 +58,7 @@ When this file passes about 300 lines, move stable entries to `docs/FEATURES_ARC
 - **What:** Home feed with categories and products; product detail; add to cart/wishlist.
 - **Where:** `screens/home_screen.dart`, `product_detail_screen.dart`, `services/product_service.dart`, `widgets/product_card.dart`.
 - **How:** `GET /api/products` (+ filters), `GET /api/products/{id}`.
-- **Tests:** None. **Open:** `lib/data/sample_products.dart` still present; `in_stock` filter isn't a backend param (`is_available`).
+- **Tests:** None. **Open:** `in_stock` filter isn't a backend param (`is_available`).
 - **Updated:** 2026-10-17
 
 ### Cart and wishlist
@@ -86,22 +86,23 @@ When this file passes about 300 lines, move stable entries to `docs/FEATURES_ARC
 ### Business details
 - **What:** Form for business name, GSTIN, PAN, etc.
 - **Where:** `screens/buisness_details_screen.dart` (file name misspelled).
-- **How:** Calls `Provider.of<ApiService>(context)` (lines 48, 490) but no provider is registered, so it throws at runtime; the result is unused anyway. Data is not saved to the backend.
-- **Tests:** None. **Open:** Wire to `/api/business-details/`; rename file in a separate change.
-- **Updated:** 2026-10-17
+- **How:** Loads `GET /api/business-details/` (404 → empty form) and saves with `POST` (first time) or `PUT`. Address lines are joined into the backend's single `address` field.
+- **Tests:** None. **Open:** Backend `POST` currently fails (`gst_number` vs `gstin` bug), so first-time create errors until that's fixed; rename file in a separate change.
+- **Updated:** 2026-10-18
 
 ### Marketplace
 - **What:** Feed, listing detail, create, edit, my listings, mark sold.
 - **Where:** `screens/marketplace_feed_screen.dart`, `marketplace_detail_screen.dart`, `create_listing_screen.dart`, `edit_listing_screen.dart`, `my_listing_screen.dart`, `services/marketplace_service.dart`.
 - **How:** `/api/marketplace/listings*` (paths match the backend); feed/create/edit also use local data.
-- **Tests:** None. **Open:** App conditions are `Excellent/Good/Fair/Poor`; backend accepts `like_new|good|fair|poor`. Edit screen not wired to the API. No image upload.
+- **Tests:** None. **Open:** App conditions are `Excellent/Good/Fair/Poor`; backend accepts `like_new|good|fair|poor`. `EditListingScreen` is never opened from anywhere and its save is still simulated (no API call). No image upload.
 - **Updated:** 2026-10-17
 
 ### Notifications
 - **What:** Notification list and unread badge.
 - **Where:** `screens/notifications_screen.dart`, `services/notification_service.dart`.
-- **How:** Local list; `NotificationService` only holds a count. Backend has no notifications API.
-- **Updated:** 2026-10-17
+- **How:** Starts empty (no sample data); `NotificationService` only holds a count. Backend has no notifications API.
+- **Open:** Needs a backend notifications API.
+- **Updated:** 2026-10-18
 
 ### Static pages
 - **What:** About us, contact us (phone, email, WhatsApp, website links), terms & privacy.

@@ -10,49 +10,8 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Sample notifications (since backend doesn't have this yet)
-  final List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Order Delivered',
-      message: 'Your order #123 has been delivered successfully!',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: false,
-      type: 'order',
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'New Product Available',
-      message: 'Check out our new industrial mixer in the Packaging category!',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: false,
-      type: 'product',
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Order Shipped',
-      message: 'Your order #122 has been shipped and will arrive in 2-3 days.',
-      timestamp: DateTime.now().subtract(const Duration(days: 2)),
-      isRead: true,
-      type: 'order',
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'Wishlist Item on Sale',
-      message: 'Premium Baking Tray from your wishlist is now 30% off!',
-      timestamp: DateTime.now().subtract(const Duration(days: 3)),
-      isRead: true,
-      type: 'wishlist',
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Marketplace Listing Sold',
-      message: 'Your listing "Industrial Oven" has been marked as sold.',
-      timestamp: DateTime.now().subtract(const Duration(days: 5)),
-      isRead: true,
-      type: 'marketplace',
-    ),
-  ];
+  // Starts empty: the backend has no notifications API yet
+  final List<NotificationItem> _notifications = [];
 
   void _markAsRead(String id) {
     setState(() {

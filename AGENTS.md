@@ -32,7 +32,8 @@ in the separate `bakerstack-backend` repo, and the React website in `bakerstack-
 - **Data access today:** all data goes through `lib/services/api_service.dart` → the FastAPI backend at
   `ApiConfig.baseUrl` in `lib/config/api_config.dart` (default `http://10.0.2.2:8000`, the Android emulator's
   address for the host PC) with a Bearer JWT. **The app never calls Supabase directly**: there is no Supabase SDK,
-  URL or key in this repo.
+  URL or key in this repo. There is no sample data in the app; never add mock or demo data. Features without a
+  backend API (notifications) show an empty state.
 - **Endpoint paths:** defined once in `lib/config/api_config.dart`. Many of them don't match the backend's real routes
   yet (see `docs/FEATURES.md` → API services). Check `bakerstack-backend/docs/PROJECT_MAP.md` before adding one.
 - **Session:** token and user JSON stored in `SharedPreferences` (`auth_token`, `user_data`) by `lib/services/auth_service.dart`.

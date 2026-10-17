@@ -28,7 +28,6 @@ bakerstack_1/  (package name: bakerstack)
 │   ├── widgets/             # product_card, cart_item_widget, wishlist_item, category_item, profile_menu_item
 │   ├── theme/app_theme.dart # ThemeData
 │   ├── utils/               # colors, constants, theme helpers
-│   └── data/sample_products.dart  # Hardcoded sample products
 ├── assets/images/           # bakerstack_logo.png, bakerstack_logo1.png (registered in pubspec.yaml)
 ├── test/widget_test.dart    # 5 widget tests (all failing at baseline)
 ├── android/                 # Android host app (applicationId com.example.lib, label "lib")
@@ -50,8 +49,10 @@ bakerstack_1/  (package name: bakerstack)
 | `order_history`, `order_detail` | `OrderService` |
 | `delivery_addresses` | `AddressService` |
 | `marketplace_feed`, `marketplace_detail`, `create_listing`, `my_listing` | `MarketplaceService` (+ local data in feed/create) |
-| `edit_listing`, `main_screen`, `notifications` | local data only |
-| `buisness_details`, `payment`, `contact_us` | `Provider.of<ApiService>` (no provider registered → throws; result unused) |
+| `notifications` | none yet (empty until a backend API exists) |
+| `edit_listing` | not reachable; save is simulated |
+| `buisness_details` | `ApiService` → `/api/business-details/` |
+| `payment`, `contact_us` | `Provider.of<ApiService>` (no provider registered → throws; result unused) |
 | `about_us`, `terms_privacy` | none (static) |
 
 ## Where to look

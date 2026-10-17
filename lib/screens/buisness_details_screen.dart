@@ -2,7 +2,7 @@
 // Manage business information and GST details
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import '../config/api_config.dart';
 import '../services/api_service.dart';
 
 class BusinessDetailsScreen extends StatefulWidget {
@@ -24,6 +24,10 @@ class _BusinessDetailsScreenState extends State<BusinessDetailsScreen> {
   bool _isLoading = true;
   bool _hasChanges = false;
   bool _isGstRegistered = false;
+  bool _exists = false; // whether the user already has a business profile on the server
+
+  // Trailing slash matters: the backend redirects without it, and http doesn't follow redirects for POST/PUT
+  static const String _endpoint = '${ApiConfig.businessDetails}/';
 
   @override
   void initState() {
@@ -45,20 +49,27 @@ class _BusinessDetailsScreenState extends State<BusinessDetailsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-      // TODO: Load from API
+      final response = await ApiService().get(_endpoint, auth: true);
 
-      // Mock data
-      await Future.delayed(Duration(seconds: 1));
-      _businessNameController.text = 'Sweet Delights Bakery';
-      _gstNumberController.text = '27AABCU9603R1ZM';
-      _panController.text = 'AABCU9603R';
-      _addressLine1Controller.text = '123, Baker Street';
-      _addressLine2Controller.text = 'Commercial Complex';
-      _cityController.text = 'Mumbai';
-      _stateController.text = 'Maharashtra';
-      _pincodeController.text = '400001';
-      _isGstRegistered = true;
+      if (response['success'] == true && response['data'] is Map) {
+        final data = response['data'] as Map<String, dynamic>;
+        _exists = true;
+        _businessNameController.text = data['business_name'] ?? '';
+        _gstNumberController.text = data['gstin'] ?? '';
+        _panController.text = data['pan_number'] ?? '';
+        // The backend stores the address as one field
+        _addressLine1Controller.text = data['address'] ?? '';
+        _addressLine2Controller.clear();
+        _cityController.text = data['city'] ?? '';
+        _stateController.text = data['state'] ?? '';
+        _pincodeController.text = data['pincode'] ?? '';
+        _isGstRegistered = (data['gstin'] ?? '').toString().isNotEmpty;
+      } else if (response['statusCode'] == 404) {
+        // No business profile yet: start with an empty form
+        _exists = false;
+      } else {
+        throw Exception(response['error'] ?? 'Failed to load business details');
+      }
 
       setState(() {
         _isLoading = false;
@@ -487,11 +498,32 @@ class _BusinessDetailsScreenState extends State<BusinessDetailsScreen> {
     }
 
     try {
-      final apiService = Provider.of<ApiService>(context, listen: false);
-      // TODO: Save via API
+      final address = [
+        _addressLine1Controller.text.trim(),
+        _addressLine2Controller.text.trim(),
+      ].where((part) => part.isNotEmpty).join(', ');
 
-      await Future.delayed(Duration(seconds: 2)); // Simulate API call
+      String? orNull(String value) => value.trim().isEmpty ? null : value.trim();
 
+      final body = <String, dynamic>{
+        'business_name': orNull(_businessNameController.text),
+        'gstin': _isGstRegistered ? orNull(_gstNumberController.text.toUpperCase()) : null,
+        'pan_number': orNull(_panController.text.toUpperCase()),
+        'address': orNull(address),
+        'city': orNull(_cityController.text),
+        'state': orNull(_stateController.text),
+        'pincode': orNull(_pincodeController.text),
+      };
+
+      final response = _exists
+          ? await ApiService().put(_endpoint, body, auth: true)
+          : await ApiService().post(_endpoint, body, auth: true);
+
+      if (response['success'] != true) {
+        throw Exception(response['error'] ?? 'Failed to save business details');
+      }
+
+      _exists = true;
       setState(() => _hasChanges = false);
 
       ScaffoldMessenger.of(context).showSnackBar(

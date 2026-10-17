@@ -66,7 +66,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
     _titleController = TextEditingController(text: widget.listing['title']);
     _priceController = TextEditingController(text: widget.listing['price'].toString());
     _descriptionController = TextEditingController(
-      text: widget.listing['description'] ?? 'High-quality bakery equipment in excellent condition.',
+      text: widget.listing['description'] ?? '',
     );
     _contactNameController = TextEditingController(
       text: widget.listing['contact_name'] ?? '',
