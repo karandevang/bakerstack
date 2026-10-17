@@ -1,6 +1,6 @@
 {
-    "name": "bakerstack_1",
-    "short_name": "bakerstack_1",
+    "name": "lib",
+    "short_name": "lib",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
