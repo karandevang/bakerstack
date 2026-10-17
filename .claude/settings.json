@@ -27,7 +27,13 @@
       "Bash(git push --force-with-lease:*)",
       "Bash(rm -rf:*)",
       "Bash(rm -fr:*)",
-      "Bash(git reset --hard:*)"
+      "Bash(git reset --hard:*)",
+      "Bash(git push origin develop:*)",
+      "Bash(git push -u origin develop:*)",
+      "Bash(git push origin HEAD:develop:*)",
+      "Bash(git push origin master:*)",
+      "Bash(git push -u origin master:*)",
+      "Bash(git push origin HEAD:master:*)"
     ],
     "ask": [
       "Bash(git push:*)",

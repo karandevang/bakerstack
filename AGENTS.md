@@ -123,3 +123,22 @@ in the separate `bakerstack-backend` repo, and the React website in `bakerstack-
   `pubspec.yaml`, `android/`, `ios/`).
 - In `docs/FEATURES.md`, only add or edit your own entry and index row.
 - Each worktree runs on its own emulator/device and points at its own backend port and dev database.
+
+## 8. Branches, reviews and releases
+
+| Branch | Purpose | Who updates it |
+|---|---|---|
+| `master` | Released / production code | Only the user, by merging `develop` through a reviewed pull request |
+| `develop` | Tested, stable integration build | Only the user, by merging reviewed change branches |
+| `feature/<name>`, `fix/<name>`, `docs/<name>`, `chore/<name>` | One change each | The agent working on that change |
+
+- Never commit or push directly to `develop` or `master`. Never merge, rebase or force-push them.
+- For every change: update `develop` (`git switch develop && git pull --ff-only`), then
+  `git switch -c <type>/<short-name>` (lowercase, hyphens, e.g. `fix/login-phone-field`). One change per branch.
+- Before asking for review: `flutter analyze` (no new errors or warnings) and `flutter test` pass, `docs/FEATURES.md` (and `docs/PROJECT_MAP.md` if needed) are updated in the
+  same branch, and the report lists what changed, how it was tested and what is left open.
+- Push the change branch (`git push -u origin <branch>`, which needs approval) and ask the user to open a pull
+  request into `develop`. The user reviews and merges.
+- Releases: when `develop` is tested and stable, the user merges `develop` into `master` through a pull request.
+- If `develop` moved on while you worked, merge `develop` into your branch and re-run the checks; ask before
+  resolving conflicts in shared files.
